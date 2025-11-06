@@ -20,7 +20,7 @@ st.markdown("""
 
 st.divider()
 
-# --- 3. 가상 데이터 생성 (원본과 동일) ---
+# --- 3. 가상 데이터 생성 ---
 @st.cache_data # 데이터 로딩 캐시
 def load_data():
     np.random.seed(42)
@@ -99,4 +99,51 @@ with col1:
         color_discrete_sequence=px.colors.qualitative.Vivid,
     )
     fig1.update_layout(showlegend=False, height=400, yaxis_title="평균 소비액 (원)")
-    st.plotly_chart(fig1, use_container
+    st.plotly_chart(fig1, use_container_width=True, theme="streamlit")
+
+with col2:
+    # (3) 연령대 & 성별별 소비액 비교 (Box Plot)
+    st.markdown("#### 👥 연령대/성별 소비액 분포")
+    fig3 = px.box(
+        filtered,
+        x="연령대", y="소비액", color="성별",
+        points="outliers",  # 'all' 대신 'outliers' (이상치)만 표시
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+    fig3.update_layout(height=400, yaxis_title="소비액 (원)")
+    st.plotly_chart(fig3, use_container_width=True, theme="streamlit")
+
+
+# (2) 월별 소비 트렌드 (하단에 넓게 배치)
+st.markdown("#### 📅 월별 평균 소비 트렌드")
+fig2_data = filtered.groupby(["연도", "월"])["소비액"].mean().reset_index()
+fig2 = px.line(
+    fig2_data,
+    x="월", y="소비액", color="연도",
+    markers=True,
+    color_discrete_sequence=px.colors.qualitative.Pastel
+)
+fig2.update_traces(line=dict(width=3))
+fig2.update_layout(xaxis=dict(tickmode='linear'), yaxis_title="평균 소비액 (원)") # x축 월 표시
+st.plotly_chart(fig2, use_container_width=True, theme="streamlit")
+
+
+# --- 8. 원본 데이터 보기 (다운로드 버튼 추가) ---
+@st.cache_data
+def convert_df(df):
+    # 'utf-8-sig'로 인코딩하여 Excel에서 한글 깨짐 방지
+    return df.to_csv(index=False).encode('utf-8-sig')
+
+if show_raw:
+    st.divider()
+    with st.container(border=True):
+        st.subheader("📄 필터링된 원본 데이터")
+        st.dataframe(filtered, use_container_width=True, height=300)
+
+        csv = convert_df(filtered)
+        st.download_button(
+            label="📥 CSV 파일로 다운로드",
+            data=csv,
+            file_name="filtered_mz_spend_data.csv",
+            mime="text/csv",
+        )
